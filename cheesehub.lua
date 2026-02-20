@@ -113,6 +113,18 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	holder.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y+10)
 end)
 
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1,0,0,45)
+searchBox.BackgroundColor3 = DARK
+searchBox.TextColor3 = WHITE
+searchBox.PlaceholderText = "Search..."
+searchBox.Font = Enum.Font.Gotham
+searchBox.TextSize = 16
+searchBox.BorderSizePixel = 0
+searchBox.ClearTextOnFocus = false
+searchBox.Parent = holder
+Instance.new("UICorner",searchBox).CornerRadius = UDim.new(0,16)
+
 local collapsed = false
 collapse.MouseButton1Click:Connect(function()
 	collapsed = not collapsed
@@ -558,3 +570,25 @@ createToggle("Bright", function(state)
 		end
 	end
 end)
+
+local function updateSearch()
+	local query = string.lower(searchBox.Text)
+
+	for _, child in pairs(holder:GetChildren()) do
+		if (child:IsA("TextButton") or child:IsA("TextBox")) and child ~= searchBox then
+			
+			local text = ""
+
+			if child:IsA("TextButton") then
+				-- Removes [ON] / [OFF] from toggle text for cleaner searching
+				text = string.lower(string.gsub(child.Text, "%s%[.*%]", ""))
+			elseif child:IsA("TextBox") then
+				text = string.lower(child.PlaceholderText or "")
+			end
+
+			child.Visible = (query == "" or string.find(text, query, 1, true))
+		end
+	end
+end
+
+searchBox:GetPropertyChangedSignal("Text"):Connect(updateSearch)
