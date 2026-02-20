@@ -281,18 +281,6 @@ tpBox.ClearTextOnFocus = false
 tpBox.Parent = holder
 Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
 
-local tpBox = Instance.new("TextBox")
-tpBox.Size = UDim2.new(1,0,0,50)
-tpBox.BackgroundColor3 = DARK
-tpBox.TextColor3 = WHITE
-tpBox.PlaceholderText = "Enter Player Name"
-tpBox.Font = Enum.Font.Gotham
-tpBox.TextSize = 17
-tpBox.BorderSizePixel = 0
-tpBox.ClearTextOnFocus = false
-tpBox.Parent = holder
-Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
-
 local function tpToPlayer()
 	local inputName = string.lower(tpBox.Text)
 	if inputName == "" then return end
