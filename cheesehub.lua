@@ -269,7 +269,6 @@ UIS.InputChanged:Connect(function(input)
 	end
 end)
 
--- TP to Player
 local tpBox = Instance.new("TextBox")
 tpBox.Size = UDim2.new(1,0,0,50)
 tpBox.BackgroundColor3 = DARK
@@ -290,7 +289,6 @@ createButton("TP to Player", function()
 	end
 end)
 
--- TP to All
 createButton("TP to All", function()
 	local others = {}
 	for _,p in pairs(Players:GetPlayers()) do
@@ -308,11 +306,166 @@ createButton("TP to All", function()
 	end)
 end)
 
--- Super Fast Spin
 local spinning = false
 createToggle("Spin", function(state) spinning = state end)
 RunService.RenderStepped:Connect(function()
 	if spinning then
 		hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(30), 0)
 	end
+end)
+
+local Camera = workspace.CurrentCamera
+local ESPEnabled = false
+local ESPObjects = {}
+
+local function clearESP()
+	for _,v in pairs(ESPObjects) do
+		if v.highlight then v.highlight:Destroy() end
+		if v.billboard then v.billboard:Destroy() end
+		if v.tracer then v.tracer:Destroy() end
+	end
+	table.clear(ESPObjects)
+end
+
+local function createESP(plr)
+	if plr == player then return end
+	if not plr.Character then return end
+	
+	local char = plr.Character
+	local hrpTarget = char:FindFirstChild("HumanoidRootPart")
+	local humTarget = char:FindFirstChildOfClass("Humanoid")
+	if not hrpTarget or not humTarget then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = Color3.fromRGB(255,153,0)
+	highlight.OutlineTransparency = 0
+	highlight.Parent = char
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0,200,0,50)
+	billboard.AlwaysOnTop = true
+	billboard.StudsOffset = Vector3.new(0,3,0)
+	billboard.Parent = hrpTarget
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1,0,1,0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1,1,1)
+	label.TextStrokeTransparency = 0
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.Parent = billboard
+
+	local tracer = Instance.new("Frame")
+	tracer.AnchorPoint = Vector2.new(0.5,0)
+	tracer.BackgroundColor3 = ORANGE
+	tracer.BorderSizePixel = 0
+	tracer.Parent = gui
+
+	ESPObjects[plr] = {
+		highlight = highlight,
+		billboard = billboard,
+		label = label,
+		tracer = tracer,
+		hum = humTarget,
+		hrp = hrpTarget
+	}
+end
+
+local function setupPlayer(plr)
+	plr.CharacterAdded:Connect(function()
+		task.wait(1)
+		if ESPEnabled then
+			createESP(plr)
+		end
+	end)
+	if plr.Character and ESPEnabled then
+		createESP(plr)
+	end
+end
+
+for _,plr in pairs(Players:GetPlayers()) do
+	if plr ~= player then
+		setupPlayer(plr)
+	end
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then return end
+	
+	for plr,data in pairs(ESPObjects) do
+		if not plr.Parent or not data.hrp or not data.hrp.Parent then
+			continue
+		end
+		
+		local pos, onScreen = Camera:WorldToViewportPoint(data.hrp.Position)
+		
+		local distance = math.floor((hrp.Position - data.hrp.Position).Magnitude)
+		local health = math.floor(data.hum.Health)
+		data.label.Text = plr.Name.." | "..health.." HP | "..distance.."m"
+		
+		if onScreen then
+			data.tracer.Visible = true
+			local bottom = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+			local target = Vector2.new(pos.X,pos.Y)
+			local magnitude = (target - bottom).Magnitude
+			
+			data.tracer.Size = UDim2.new(0,2,0,magnitude)
+			data.tracer.Position = UDim2.new(0,bottom.X,0,bottom.Y)
+			data.tracer.Rotation = math.deg(math.atan2(target.Y-bottom.Y,target.X-bottom.X)) + 90
+		else
+			data.tracer.Visible = false
+		end
+	end
+end)
+
+createToggle("ESP", function(state)
+	ESPEnabled = state
+	
+	if not state then
+		clearESP()
+	else
+		for _,plr in pairs(Players:GetPlayers()) do
+			if plr ~= player then
+				createESP(plr)
+			end
+		end
+	end
+end)
+
+local xrayEnabled = false
+
+local function setTransparencyForCharacter(char, transparency)
+	if not char then return end
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			part.Transparency = transparency
+		elseif part:IsA("Decal") or part:IsA("Texture") then
+			part.Transparency = transparency
+		end
+	end
+end
+
+createToggle("X-Ray", function(state)
+	xrayEnabled = state
+	
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character then
+			setTransparencyForCharacter(plr.Character, xrayEnabled and 0.5 or 0)
+		end
+	end
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function(char)
+		if xrayEnabled and plr ~= player then
+			setTransparencyForCharacter(char, 0.5)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
 end)
