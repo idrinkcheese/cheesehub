@@ -282,11 +282,41 @@ tpBox.Parent = holder
 Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
 
 createButton("TP to Player", function()
-	local targetName = tpBox.Text
-	local targetPlayer = Players:FindFirstChild(targetName)
-	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		hrp.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+	local inputName = string.lower(tpBox.Text)
+	if inputName == "" then return end
+	
+	local targetPlayer = nil
+	
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= player and string.find(string.lower(plr.Name), inputName, 1, true) then
+			targetPlayer = plr
+			break
+		end
 	end
+	
+	if not targetPlayer then
+		warn("Player not found")
+		return
+	end
+	
+	local targetChar = targetPlayer.Character
+	if not targetChar then
+		targetChar = targetPlayer.CharacterAdded:Wait()
+	end
+	
+	local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+	if not targetHRP then
+		warn("Target HumanoidRootPart missing")
+		return
+	end
+	
+	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+		return
+	end
+	
+	hrp = player.Character.HumanoidRootPart
+	
+	hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
 end)
 
 createButton("TP to All", function()
@@ -437,39 +467,49 @@ createToggle("ESP", function(state)
 end)
 
 local xrayEnabled = false
+local XRayParts = {}
 
-local function setTransparencyForCharacter(char, transparency)
-	if not char then return end
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-			part.Transparency = transparency
-		elseif part:IsA("Decal") or part:IsA("Texture") then
-			part.Transparency = transparency
+local function setPartTransparency(part, transparency)
+	if not part:IsA("BasePart") then return end
+	if part:IsDescendantOf(player.Character) then return end
+	if part.Name == "HumanoidRootPart" then return end
+	
+	if not XRayParts[part] then
+		XRayParts[part] = part.LocalTransparencyModifier
+	end
+	
+	part.LocalTransparencyModifier = transparency
+end
+
+local function clearXRay()
+	for part, original in pairs(XRayParts) do
+		if part and part.Parent then
+			part.LocalTransparencyModifier = original
 		end
 	end
+	table.clear(XRayParts)
 end
 
 createToggle("X-Ray", function(state)
 	xrayEnabled = state
 	
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= player and plr.Character then
-			setTransparencyForCharacter(plr.Character, xrayEnabled and 0.5 or 0)
+	if not state then
+		clearXRay()
+		return
+	end
+	
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			setPartTransparency(obj, 0.7)
 		end
 	end
 end)
 
-Players.PlayerAdded:Connect(function(plr)
-	plr.CharacterAdded:Connect(function(char)
-		if xrayEnabled and plr ~= player then
-			setTransparencyForCharacter(char, 0.5)
-		end
-	end)
+workspace.DescendantAdded:Connect(function(obj)
+	if xrayEnabled and obj:IsA("BasePart") then
+		setPartTransparency(obj, 0.7)
+	end
 end)
-
-Players.PlayerRemoving:Connect(function(plr)
-end)
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 
@@ -483,6 +523,38 @@ createButton("Tools", function()
 	for _, tool in pairs(Lighting:GetDescendants()) do
 		if tool:IsA("Tool") then
 			tool:Clone().Parent = player.Backpack
+		end
+	end
+end)
+
+local Lighting = game:GetService("Lighting")
+
+local brightEnabled = false
+local originalLighting = {}
+
+createToggle("Bright", function(state)
+	brightEnabled = state
+	
+	if state then
+		originalLighting.Brightness = Lighting.Brightness
+		originalLighting.ClockTime = Lighting.ClockTime
+		originalLighting.FogEnd = Lighting.FogEnd
+		originalLighting.GlobalShadows = Lighting.GlobalShadows
+		originalLighting.Ambient = Lighting.Ambient
+		originalLighting.OutdoorAmbient = Lighting.OutdoorAmbient
+		
+		Lighting.Brightness = 5
+		Lighting.ClockTime = 14
+		Lighting.FogEnd = 100000
+		Lighting.GlobalShadows = false
+		Lighting.Ambient = Color3.fromRGB(255,255,255)
+		Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+		
+	else
+		for property, value in pairs(originalLighting) do
+			if Lighting[property] ~= nil then
+				Lighting[property] = value
+			end
 		end
 	end
 end)
