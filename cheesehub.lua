@@ -281,7 +281,19 @@ tpBox.ClearTextOnFocus = false
 tpBox.Parent = holder
 Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
 
-createButton("TP to Player", function()
+local tpBox = Instance.new("TextBox")
+tpBox.Size = UDim2.new(1,0,0,50)
+tpBox.BackgroundColor3 = DARK
+tpBox.TextColor3 = WHITE
+tpBox.PlaceholderText = "Enter Player Name"
+tpBox.Font = Enum.Font.Gotham
+tpBox.TextSize = 17
+tpBox.BorderSizePixel = 0
+tpBox.ClearTextOnFocus = false
+tpBox.Parent = holder
+Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
+
+local function tpToPlayer()
 	local inputName = string.lower(tpBox.Text)
 	if inputName == "" then return end
 	
@@ -299,24 +311,24 @@ createButton("TP to Player", function()
 		return
 	end
 	
-	local targetChar = targetPlayer.Character
-	if not targetChar then
-		targetChar = targetPlayer.CharacterAdded:Wait()
-	end
-	
+	local targetChar = targetPlayer.Character or targetPlayer.CharacterAdded:Wait()
 	local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
 	if not targetHRP then
-		warn("Target HumanoidRootPart missing")
+		warn("Target HRP missing")
 		return
 	end
 	
-	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-		return
+	if not player.Character then return end
+	hrp = player.Character:WaitForChild("HumanoidRootPart")
+	
+	hrp.CFrame = targetHRP.CFrame + Vector3.new(0,3,0)
+end
+
+
+tpBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		tpToPlayer()
 	end
-	
-	hrp = player.Character.HumanoidRootPart
-	
-	hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
 end)
 
 createButton("TP to All", function()
