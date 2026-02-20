@@ -469,3 +469,20 @@ end)
 
 Players.PlayerRemoving:Connect(function(plr)
 end)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+createButton("Tools", function()
+	for _, tool in pairs(ReplicatedStorage:GetDescendants()) do
+		if tool:IsA("Tool") then
+			tool:Clone().Parent = player.Backpack
+		end
+	end
+	
+	for _, tool in pairs(Lighting:GetDescendants()) do
+		if tool:IsA("Tool") then
+			tool:Clone().Parent = player.Backpack
+		end
+	end
+end)
