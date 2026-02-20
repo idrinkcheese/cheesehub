@@ -1,10 +1,11 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-if player:WaitForChild("PlayerGui"):FindFirstChild("CheeseHub") then return end
+local existing = player:WaitForChild("PlayerGui"):FindFirstChild("CheeseHub")
+if existing then existing:Destroy() end
 
 local char = player.Character or player.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
@@ -31,8 +32,6 @@ main.Size = UDim2.new(0.55,0,0.6,0)
 main.Position = UDim2.new(0.225,0,0.2,0)
 main.BackgroundColor3 = ORANGE
 main.BorderSizePixel = 0
-main.Active = true
-main.Draggable = true
 main.Parent = gui
 Instance.new("UICorner",main).CornerRadius = UDim.new(0,24)
 
@@ -82,6 +81,22 @@ collapse.BorderSizePixel = 0
 collapse.Parent = titleBar
 Instance.new("UICorner",collapse).CornerRadius = UDim.new(1,0)
 
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0,36,0,36)
+close.Position = UDim2.new(1,-95,0.5,-18)
+close.Text = "X"
+close.Font = Enum.Font.GothamBold
+close.TextSize = 18
+close.BackgroundColor3 = Color3.fromRGB(255,80,80)
+close.TextColor3 = Color3.new(1,1,1)
+close.BorderSizePixel = 0
+close.Parent = titleBar
+Instance.new("UICorner",close).CornerRadius = UDim.new(1,0)
+
+close.MouseButton1Click:Connect(function()
+	gui:Destroy()
+end)
+
 local holder = Instance.new("ScrollingFrame")
 holder.Size = UDim2.new(1,-20,1,-90)
 holder.Position = UDim2.new(0,10,0,80)
@@ -94,7 +109,6 @@ holder.Parent = main
 local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0,12)
 layout.Parent = holder
-
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	holder.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y+10)
 end)
@@ -102,9 +116,13 @@ end)
 local collapsed = false
 collapse.MouseButton1Click:Connect(function()
 	collapsed = not collapsed
-	holder.Visible = not collapsed
-	main.Size = collapsed and UDim2.new(0.55,0,0,80) or UDim2.new(0.55,0,0.6,0)
 	collapse.Text = collapsed and "+" or "-"
+	local targetSize = collapsed and UDim2.new(0.55,0,0,80) or UDim2.new(0.55,0,0.6,0)
+	local tween = TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize})
+	tween:Play()
+	local holderTween = TweenService:Create(holder, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = collapsed and 1 or 0})
+	holderTween:Play()
+	task.delay(0.15, function() holder.Visible = not collapsed end)
 end)
 
 local function createButton(name,callback)
@@ -155,21 +173,14 @@ Instance.new("UICorner",speedBox).CornerRadius = UDim.new(0,16)
 speedBox.FocusLost:Connect(function(enter)
 	if enter then
 		local value = tonumber(speedBox.Text)
-		if value and hum then
-			hum.WalkSpeed = value
-		end
+		if value and hum then hum.WalkSpeed = value end
 	end
 end)
 
 local infJump = false
-createToggle("Infinite Jump",function(e)
-	infJump = e
-end)
-
+createToggle("Infinite Jump",function(e) infJump = e end)
 UIS.JumpRequest:Connect(function()
-	if infJump then
-		hum:ChangeState(Enum.HumanoidStateType.Jumping)
-	end
+	if infJump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
 local flying = false
@@ -208,9 +219,7 @@ end)
 
 createButton("Equip All Tools",function()
 	for _,tool in pairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			tool.Parent = char
-		end
+		if tool:IsA("Tool") then tool.Parent = char end
 	end
 end)
 
@@ -226,19 +235,84 @@ createButton("Respawn",function()
 end)
 
 local tpClick = false
-
-createToggle("(PC ONLY) TP Click",function(e)
-	tpClick = e
-end)
-
+createToggle("(PC ONLY) TP Click",function(e) tpClick = e end)
 UIS.InputBegan:Connect(function(input,gp)
 	if gp then return end
 	if tpClick and input.UserInputType == Enum.UserInputType.MouseButton1 then
 		if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl) then
 			local mouse = player:GetMouse()
-			if mouse and mouse.Hit then
-				hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0))
+			if mouse and mouse.Hit then hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0)) end
+		end
+	end
+end)
+
+local dragging = false
+local dragStart = Vector2.zero
+local startPos = UDim2.new()
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+titleBar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then end
+end)
+UIS.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- TP to Player
+local tpBox = Instance.new("TextBox")
+tpBox.Size = UDim2.new(1,0,0,50)
+tpBox.BackgroundColor3 = DARK
+tpBox.TextColor3 = WHITE
+tpBox.PlaceholderText = "Enter Player Name"
+tpBox.Font = Enum.Font.Gotham
+tpBox.TextSize = 17
+tpBox.BorderSizePixel = 0
+tpBox.ClearTextOnFocus = false
+tpBox.Parent = holder
+Instance.new("UICorner",tpBox).CornerRadius = UDim.new(0,16)
+
+createButton("TP to Player", function()
+	local targetName = tpBox.Text
+	local targetPlayer = Players:FindFirstChild(targetName)
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		hrp.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+	end
+end)
+
+-- TP to All
+createButton("TP to All", function()
+	local others = {}
+	for _,p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			table.insert(others, p)
+		end
+	end
+	spawn(function()
+		for _,p in ipairs(others) do
+			if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				hrp.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+				task.wait(1.2)
 			end
 		end
+	end)
+end)
+
+-- Super Fast Spin
+local spinning = false
+createToggle("Spin", function(state) spinning = state end)
+RunService.RenderStepped:Connect(function()
+	if spinning then
+		hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(30), 0)
 	end
 end)
