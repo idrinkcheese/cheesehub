@@ -571,9 +571,6 @@ createToggle("Bright", function(state)
 	end
 end)
 
-local noclipEnabled = false
-local noclipConnection
-
 createToggle("Noclip", function(state)
 	noclipEnabled = state
 	
@@ -586,9 +583,18 @@ createToggle("Noclip", function(state)
 		noclipConnection = RunService.Stepped:Connect(function()
 			if not char then return end
 			
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if not humanoid then return end
+			
+			local isGrounded = humanoid.FloorMaterial ~= Enum.Material.Air
+			
 			for _, part in pairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-					part.CanCollide = false
+				if part:IsA("BasePart") then
+					if isGrounded then
+						part.CanCollide = true
+					else
+						part.CanCollide = false
+					end
 				end
 			end
 		end)
