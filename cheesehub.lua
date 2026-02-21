@@ -571,6 +571,38 @@ createToggle("Bright", function(state)
 	end
 end)
 
+local noclipEnabled = false
+local noclipConnection
+
+createToggle("Noclip", function(state)
+	noclipEnabled = state
+	
+	if noclipConnection then
+		noclipConnection:Disconnect()
+		noclipConnection = nil
+	end
+	
+	if state then
+		noclipConnection = RunService.Stepped:Connect(function()
+			if not char then return end
+			
+			for _, part in pairs(char:GetDescendants()) do
+				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+					part.CanCollide = false
+				end
+			end
+		end)
+	else
+		if char then
+			for _, part in pairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+				end
+			end
+		end
+	end
+end)
+
 local function updateSearch()
 	local query = string.lower(searchBox.Text)
 
@@ -580,7 +612,6 @@ local function updateSearch()
 			local text = ""
 
 			if child:IsA("TextButton") then
-				-- Removes [ON] / [OFF] from toggle text for cleaner searching
 				text = string.lower(string.gsub(child.Text, "%s%[.*%]", ""))
 			elseif child:IsA("TextBox") then
 				text = string.lower(child.PlaceholderText or "")
